@@ -17,3 +17,5 @@ class ChatBotScreen extends StatelessWidget {
     return Center(child: Text('Favorites Screen'));
   }
 }
+
+hi
