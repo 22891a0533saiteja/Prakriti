@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart'; // Ensure correct imports
 import 'fav_screen.dart';
 import 'search_screen.dart';
-import 'chat_bot_screen.dart';
+import 'chatbot_home.dart';
 import 'tour_screen.dart';
 
 class MainScreen extends StatefulWidget {
