@@ -1,5 +1,6 @@
 // main_screen.dart
 import 'package:flutter/material.dart';
+import 'package:prakriti/ProfileScreen.dart';
 import 'home_screen.dart'; // Ensure correct imports
 import 'fav_screen.dart';
 import 'search_screen.dart';
@@ -17,11 +18,13 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
+
     HomePage(),
     FavoritesScreen(),
     SearchPage(),
     ChatBotScreen(),
     TourPage(),
+    ProfilePage(),
   ];
 
   void _onItemTapped(int index) {
@@ -55,6 +58,10 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.tour),
             label: 'Tour',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.verified_user),
+            label: 'Profile',
           ),
         ],
         currentIndex: _selectedIndex,
