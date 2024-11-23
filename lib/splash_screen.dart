@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:prakriti/home_screen.dart';
 import 'main.dart';
-import 'main_screen.dart'; // Make sure this file exists
+import 'LoginScreen.dart';
+import 'main_screen.dart';
+import 'home_screen.dart';
+import 'SignupScreen.dart';// Make sure this file exists
 
 class SplashScreen extends StatelessWidget {
   @override
@@ -8,7 +12,7 @@ class SplashScreen extends StatelessWidget {
     // Simulate a delay to show the splash screen for a few seconds
     Future.delayed(Duration(seconds: 3), () {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => MainScreen()),
+        MaterialPageRoute(builder: (context) => MainScreen()),//changed for signup
       );
     });
 
