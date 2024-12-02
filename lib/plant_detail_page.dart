@@ -2,8 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:translator/translator.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'plant_3d_view_page.dart'; // Import the 3D view page
+import 'plant_3d_view_page.dart';
+import 'chatbot_home.dart';
 
 class PlantDetailPage extends StatefulWidget {
   final String herbName;
@@ -19,9 +21,21 @@ class PlantDetailPage extends StatefulWidget {
 
 class _PlantDetailPageState extends State<PlantDetailPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  int _currentIndex = 0;
+  final translator = GoogleTranslator();
+
   Map<String, dynamic>? plantData;
+  Map<String, dynamic>? originalPlantData;
   bool isLoading = true;
+
+  String selectedLanguage = 'en';
+  final Map<String, String> languageMap = {
+    'English': 'en',
+    'Spanish': 'es',
+    'French': 'fr',
+    'Hindi': 'hi',
+    'Tamil': 'ta',
+    'Kannada': 'kn',
+  };
 
   @override
   void initState() {
@@ -31,14 +45,17 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
 
   Future<void> fetchPlantDetails() async {
     try {
-      DocumentSnapshot snapshot = await _firestore.collection('plantDetails').doc(widget.herbName).get();
+      DocumentSnapshot snapshot = await _firestore
+          .collection('plantDetails')
+          .doc(widget.herbName)
+          .get();
 
       if (snapshot.exists) {
         setState(() {
-          plantData = snapshot.data() as Map<String, dynamic>;
+          originalPlantData = snapshot.data() as Map<String, dynamic>;
+          plantData = Map<String, dynamic>.from(originalPlantData!);
           isLoading = false;
         });
-        print("Fetched plantData: $plantData"); // Debug log
       } else {
         setState(() {
           isLoading = false;
@@ -51,6 +68,64 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
       });
       print("Error fetching plant details: $e");
     }
+  }
+
+  Future<String> translateText(String text, String targetLang) async {
+    try {
+      // Replace 'trigger' with a unique placeholder before translation
+      const placeholder = '\n';
+      final preprocessedText = text.replaceAll('trigger', placeholder);
+
+      if (targetLang == 'en') {
+        return preprocessedText.replaceAll(placeholder, 'trigger');
+      }
+
+      // Translate the preprocessed text
+      final translated =
+          await translator.translate(preprocessedText, to: targetLang);
+
+      // Replace the placeholder back to 'trigger' after translation
+      return translated.text.replaceAll(placeholder, 'trigger');
+    } catch (e) {
+      print("Translation error: $e");
+      return text; // Return original text in case of an error
+    }
+  }
+
+  Future<List<String>> translateList(
+      List<String> texts, String targetLang) async {
+    return Future.wait(texts.map((text) => translateText(text, targetLang)));
+  }
+
+  Future<void> translateData() async {
+    if (originalPlantData == null || selectedLanguage == 'en') {
+      setState(() {
+        plantData = Map<String, dynamic>.from(originalPlantData!);
+      });
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    plantData = {
+      for (var entry in originalPlantData!.entries)
+        entry.key: entry.value is String
+            ? await translateText(entry.value as String, selectedLanguage)
+            : entry.value is List<String>
+                ? await translateList(
+                    entry.value as List<String>, selectedLanguage)
+                : entry.value,
+    };
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  List<String> processText(String text) {
+    return text.split('trigger').map((line) => line.trim()).toList();
   }
 
   @override
@@ -75,13 +150,22 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
     }
 
     final images = List<String>.from(plantData!['images'] ?? []);
-    final leafInfo = plantData!['leafInfo'] ?? 'No leaf information available';
-    final rootInfo = plantData!['rootInfo'] ?? 'No root information available';
-    final stemInfo = plantData!['stemInfo'] ?? 'No stem information available';
-    final advantages = plantData!['advantages'] ?? 'No advantages information available';
-    final disadvantages = plantData!['disadvantages'] ?? 'No disadvantages information available';
-    final medicinalUses = plantData!['medicinalUses'] ?? 'No medicinal uses information available';
-    final medicinalVideos = List<String>.from(plantData!['medicinalVideos'] ?? []);
+    final leafInfo =
+        processText(plantData!['leafInfo'] ?? 'No leaf information available');
+    final rootInfo =
+        processText(plantData!['rootInfo'] ?? 'No root information available');
+    final stemInfo =
+        processText(plantData!['stemInfo'] ?? 'No stem information available');
+    final advantages = processText(
+        plantData!['advantages'] ?? 'No advantages information available');
+    final disadvantages = processText(plantData!['disadvantages'] ??
+        'No disadvantages information available');
+    final medicinalUses = processText(plantData!['medicinalUses'] ??
+        'No medicinal uses information available');
+    final growCultivate = processText(
+        plantData!['growCultivate'] ?? 'No cultivation information available');
+    final medicinalVideos =
+        List<String>.from(plantData!['medicinalVideos'] ?? []);
     final modelPath = plantData!['modelPath'];
     final mtlPath = plantData!['mtlPath'];
     final pngPath = plantData!['pngPath'];
@@ -90,8 +174,31 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: Text(widget.herbName, style: const TextStyle(color: Color(0xFFF39C12))),
+        title: Text(widget.herbName,
+            style: const TextStyle(color: Color(0xFFF39C12))),
         actions: [
+          DropdownButton<String>(
+            value: selectedLanguage,
+            dropdownColor: Colors.black,
+            icon: const Icon(Icons.language, color: Color(0xFFF39C12)),
+            onChanged: (String? newValue) async {
+              if (newValue != null) {
+                setState(() {
+                  selectedLanguage = newValue;
+                });
+                await translateData();
+              }
+            },
+            items: languageMap.entries.map((entry) {
+              return DropdownMenuItem<String>(
+                value: entry.value,
+                child: Text(
+                  entry.key,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              );
+            }).toList(),
+          ),
           IconButton(
             icon: const Icon(Icons.threed_rotation, color: Color(0xFFF39C12)),
             onPressed: () {
@@ -102,7 +209,9 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
 
               if (missingFiles.isNotEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Missing files: ${missingFiles.join(', ')}')),
+                  SnackBar(
+                      content:
+                          Text('Missing files: ${missingFiles.join(', ')}')),
                 );
               } else {
                 Navigator.push(
@@ -135,12 +244,14 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
                         return CachedNetworkImage(
                           imageUrl: images[index],
                           fit: BoxFit.cover,
-                          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                          placeholder: (context, url) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
                           errorWidget: (context, url, error) {
-                            print('Failed to load image: $url');
                             return Container(
                               color: Colors.grey,
-                              child: const Center(child: Text('Image not available')),
+                              child: const Center(
+                                  child: Text('Image not available')),
                             );
                           },
                         );
@@ -150,26 +261,7 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
                         autoPlay: true,
                         enlargeCenterPage: true,
                         enableInfiniteScroll: true,
-                        onPageChanged: (index, reason) {
-                          setState(() {
-                            _currentIndex = index;
-                          });
-                        },
                       ),
-                    ),
-                    const SizedBox(height: 16.0),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(images.length, (index) {
-                        return Container(
-                          width: 30.0,
-                          height: 4.0,
-                          margin: const EdgeInsets.symmetric(horizontal: 2.0),
-                          decoration: BoxDecoration(
-                            color: _currentIndex == index ? Colors.orange : Colors.grey,
-                          ),
-                        );
-                      }),
                     ),
                     const SizedBox(height: 16.0),
                   ],
@@ -181,13 +273,17 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
                   child: const Center(child: Text('No images available')),
                 ),
               const SizedBox(height: 16.0),
-              _buildSection('Latin Name', plantData!['latinName'] ?? 'No Latin name available', null),
+              _buildSection('Latin Name',
+                  plantData!['latinName'] ?? 'No Latin name available'),
               const SizedBox(height: 16.0),
-              _buildSection('Leaves', leafInfo, images.isNotEmpty ? images[0] : null),
+              _buildSectionWithImage(
+                  'Leaves', leafInfo, images.isNotEmpty ? images[0] : null),
               const SizedBox(height: 16.0),
-              _buildSection('Roots', rootInfo, images.length > 1 ? images[1] : null),
+              _buildSectionWithImage(
+                  'Roots', rootInfo, images.length > 1 ? images[1] : null),
               const SizedBox(height: 16.0),
-              _buildSection('Stem', stemInfo, images.length > 2 ? images[2] : null),
+              _buildSectionWithImage(
+                  'Stem', stemInfo, images.length > 2 ? images[2] : null),
               const SizedBox(height: 16.0),
               _buildTextSection('Advantages', advantages),
               const SizedBox(height: 16.0),
@@ -195,7 +291,38 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
               const SizedBox(height: 16.0),
               _buildTextSection('Medicinal Uses', medicinalUses),
               const SizedBox(height: 16.0),
-              if (medicinalVideos.isNotEmpty) _buildVideosSection(medicinalVideos),
+              _buildTextSection('How to Grow / Cultivate', growCultivate),
+              const SizedBox(height: 16.0),
+              if (medicinalVideos.isNotEmpty)
+                _buildVideosSection(medicinalVideos),
+              const SizedBox(height: 16.0),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ChatBotScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(
+                        255, 255, 234, 199), // Button color
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12.0,
+                      horizontal: 24.0,
+                    ),
+                  ),
+                  child: const Text(
+                    'For more information ask our Herbi Bot',
+                    style: TextStyle(
+                      fontSize: 16.0,
+                      color: Color.fromARGB(255, 0, 0, 0),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -203,55 +330,8 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
     );
   }
 
-  Widget _buildSection(String label, String info, String? imageUrl) {
-    return Row(
-      children: [
-        if (imageUrl != null)
-          Expanded(
-            child: CachedNetworkImage(
-              imageUrl: imageUrl,
-              fit: BoxFit.cover,
-              height: 150,
-              placeholder: (context, url) => const CircularProgressIndicator(),
-              errorWidget: (context, url, error) {
-                print('Failed to load image: $url');
-                return Container(
-                  height: 150,
-                  color: Colors.grey,
-                  child: const Center(child: Text('Image not available')),
-                );
-              },
-            ),
-          ),
-        const SizedBox(width: 16.0),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 18.0,
-                  color: Color(0xFFF39C12),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8.0),
-              Text(
-                info,
-                style: const TextStyle(
-                  fontSize: 16.0,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTextSection(String label, String info) {
+  // Helper method for creating sections with a title and text
+  Widget _buildSection(String label, String info) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -275,6 +355,82 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
     );
   }
 
+  // Helper method for creating sections with images and text
+  Widget _buildSectionWithImage(
+      String label, List<String> info, String? imageUrl) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (imageUrl != null)
+          CachedNetworkImage(
+            imageUrl: imageUrl,
+            fit: BoxFit.cover,
+            height: 150,
+            placeholder: (context, url) => const CircularProgressIndicator(),
+            errorWidget: (context, url, error) {
+              print('Failed to load image: $url');
+              return Container(
+                height: 150,
+                color: Colors.grey,
+                child: const Center(child: Text('Image not available')),
+              );
+            },
+          ),
+        const SizedBox(height: 8.0),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 18.0,
+            color: Color(0xFFF39C12),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8.0),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: info
+              .map(
+                (text) => Text(
+                  text,
+                  style: const TextStyle(fontSize: 16.0, color: Colors.white),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  // Helper method for creating text-only sections
+  Widget _buildTextSection(String label, List<String> info) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 18.0,
+            color: Color(0xFFF39C12),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8.0),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: info
+              .map(
+                (text) => Text(
+                  text,
+                  style: const TextStyle(fontSize: 16.0, color: Colors.white),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  // Helper method for embedding videos
   Widget _buildVideosSection(List<String> videoUrls) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,7 +448,7 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
           children: videoUrls.map((videoUrl) {
             final videoId = YoutubePlayer.convertUrlToId(videoUrl);
             if (videoId == null) {
-              print("Invalid video URL: $videoUrl"); // Debug log
+              print("Invalid video URL: $videoUrl");
               return const Text('Invalid video URL');
             }
             return YoutubePlayer(
