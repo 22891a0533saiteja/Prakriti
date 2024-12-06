@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'splash_screen.dart'; // Import the splash screen
-import 'fav_screen.dart'; // Ensure these imports are correct
+import 'ChatScreen.dart'; // Ensure these imports are correct
 import 'home_screen.dart'; // Ensure this import is correct
 import 'search_screen.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
@@ -9,7 +9,7 @@ import 'package:prakriti/consts.dart';
 import 'package:prakriti/chatbot_home.dart';
 import 'chatbot_home.dart';
 import 'tour_screen.dart';
-
+import 'package:prakriti/LoginScreen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();

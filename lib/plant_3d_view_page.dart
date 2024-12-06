@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_cube/flutter_cube.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'package:vector_math/vector_math_64.dart' as vm;
 
 class Plant3DViewPage extends StatefulWidget {
+  final String herbName;
   final String modelPath;
   final String mtlPath;
   final String pngPath;
 
   const Plant3DViewPage({
     Key? key,
+    required this.herbName,
     required this.modelPath,
     required this.mtlPath,
     required this.pngPath,
@@ -22,80 +20,160 @@ class Plant3DViewPage extends StatefulWidget {
 }
 
 class _Plant3DViewPageState extends State<Plant3DViewPage> {
-  late String localModelPath;
-  late String localMtlPath;
-  late String localPngPath;
   bool isLoading = true;
-  String? errorMessage;
+  late Object _object;
+  late Scene _scene;
 
   @override
   void initState() {
     super.initState();
-    downloadFiles();
+    load3DModel();
   }
 
-  Future<void> downloadFiles() async {
-    Directory tempDir = await getTemporaryDirectory();
-    localModelPath = '${tempDir.path}/model.obj';
-    localMtlPath = '${tempDir.path}/model.mtl';
-    localPngPath = '${tempDir.path}/texture.png';
+  Future<void> load3DModel() async {
+    try {
+      _object = Object(fileName: widget.modelPath);
+      _object.scale.setValues(12.0, 12.0, 12.0); // Set larger initial scale
 
-    await _downloadFile(widget.modelPath, localModelPath);
-    await _downloadFile(widget.mtlPath, localMtlPath);
-    await _downloadFile(widget.pngPath, localPngPath);
+      // Ensure that you are handling the object correctly
+      setState(() {
+        isLoading = false;
+      });
+      print('3D Model loaded successfully');
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      print("Error loading 3D model assets: $e");
+    }
+  }
 
+  void zoomIn() {
     setState(() {
-      isLoading = false; // Update loading status
+      double currentScale = _object.scale.x;
+      if (currentScale < 10.0) {
+        _object.scale.setValues(
+          currentScale + 0.1,
+          currentScale + 0.1,
+          currentScale + 0.1,
+        );
+      }
+      _scene.camera.position.z -= 0.5;
     });
   }
 
-  Future<void> _downloadFile(String url, String localPath) async {
-    try {
-      var response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        File file = File(localPath);
-        await file.writeAsBytes(response.bodyBytes);
-        print('Downloaded file: $localPath');
-
-        // Check if file exists and print its size
-        if (await file.exists()) {
-          final fileSize = await file.length();
-          print('File size: $fileSize bytes');
-        }
-      } else {
-        setState(() {
-          errorMessage = "Failed to download file: $url (Status Code: ${response.statusCode})";
-        });
+  void zoomOut() {
+    setState(() {
+      double currentScale = _object.scale.x;
+      if (currentScale > 0.5) {
+        _object.scale.setValues(
+          currentScale - 0.1,
+          currentScale - 0.1,
+          currentScale - 0.1,
+        );
       }
-    } catch (e) {
-      setState(() {
-        errorMessage = "Error downloading file: $e";
-      });
-    }
+      _scene.camera.position.z += 0.5;
+    });
+  }
+
+  void resetView() {
+    setState(() {
+      _object.rotation.setValues(0.0, 0.0, 0.0); // Reset rotation
+      _object.scale.setValues(8.0, 8.0, 8.0); // Reset scale to initial state (larger size)
+      _scene.camera.position.setValues(0.0, 0.0, 12.0); // Adjusted camera position for larger model
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text('3D View'),
+        title: Text(
+          '${widget.herbName} - 3D View',
+          style: const TextStyle(color: Color(0xFFF39C12)),
+        ),
         backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Color(0xFFF39C12)),
       ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : errorMessage != null
-          ? Center(child: Text(errorMessage!, style: TextStyle(color: Colors.red)))
-          : Cube(
-        onSceneCreated: (scene) {
-          scene.world.add(Object(
-            fileName: localModelPath,
-            scale: vm.Vector3(1.0, 1.0, 1.0),
-          ));
-          scene.camera.position.z = 5;
+      body: Stack(
+        children: [
+          // Background GIF with opacity
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.15, // Adjust opacity here if needed (max opacity is 1.0)
+              child: Image.asset(
+                'assets/images/appbackgroundoptimize.gif', // Replace with the path to your GIF
+                fit: BoxFit.cover, // Cover the entire screen
+              ),
+            ),
+          ),
+          // Loading indicator
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(color: Color(0xFFF39C12)),
+            )
+          else
+            Cube(
+              onSceneCreated: (scene) {
+                _scene = scene;
+                _scene.world.add(_object);  // Ensure the object is added to the scene
+                _scene.camera.position.setValues(0.0, 0.0, 12.0); // Camera position for larger model
+                print("3D model added to the scene");
+              },
+            ),
+          // Controls for zooming and resetting view
+          if (!isLoading)
+            Positioned(
+              bottom: 20,
+              left: 20,
+              right: 20,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildControlButton(
+                    icon: Icons.zoom_out,
+                    label: 'Zoom Out',
+                    onPressed: zoomOut,
+                  ),
+                  _buildControlButton(
+                    icon: Icons.refresh,
+                    label: 'Reset',
+                    onPressed: resetView,
+                  ),
+                  _buildControlButton(
+                    icon: Icons.zoom_in,
+                    label: 'Zoom In',
+                    onPressed: zoomIn,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-          // Make sure the MTL file is referenced correctly in the OBJ file
-        },
-      ),
+  Widget _buildControlButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FloatingActionButton(
+          backgroundColor: const Color(0xFFF39C12),
+          mini: true,
+          onPressed: onPressed,
+          child: Icon(icon, color: Colors.black),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+        ),
+      ],
     );
   }
 }

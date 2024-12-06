@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
    
 
 
@@ -57,11 +58,18 @@ dependencies:
   translator: ^0.1.7
   flutter_tts: ^3.6.09
   speech_to_text: ^7.0.0
+  video_player: ^2.4.5
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.9.3
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_logo.png"
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -84,9 +92,6 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/pudina.png
-    - assets/Aloe Vera/
-    - assets/thulasi/
-    - assets/Aloe Vera/Aloe_Vera_in_a_Modern_0918142443.obj
     - fonts/Poppins-Regular.ttf
     - fonts/Poppins-Bold.ttf
     - assets/user.png
@@ -95,6 +100,39 @@ flutter:
     - assets/gif2.gif
     - assets/gif3.gif
     - assets/gif4.gif
+    - assets/ashawaganda/model.mtl
+    - assets/ashawaganda/model.obj
+    - assets/ashawaganda/texture.png
+    - assets/amla/model.obj
+    - assets/amla/model.mtl
+    - assets/amla/texture.png
+    - assets/tulasi/model.obj
+    - assets/tulasi/model.mtl
+    - assets/tulasi/texture.png
+    - assets/videos/tourbackground.mp4
+    - assets/videos/appbackground.mp4
+    - assets/logo.png
+    - assets/images/
+    - assets/images/p1.png
+    - assets/images/p3.png
+    - assets/images/p2.png
+    - assets/coconut/
+    - assets/coconut/model.mtl
+    - assets/coconut/model.obj
+    - assets/coconut/texture.png
+    - assets/triphala/
+    - assets/triphala/model.mtl
+    - assets/triphala/model.obj
+    - assets/triphala/texture.png
+    - assets/cardamom/
+    - assets/cardamom/model.obj
+    - assets/cardamom/model.mtl
+    - assets/cardamom/texture.png
+    - assets/ginger/
+    - assets/ginger/model.obj
+    - assets/ginger/model.mtl
+    - assets/ginger/texture.png
+    - assets/images/app_logo.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -23,7 +23,7 @@ class _HomePageState extends State<ChatBotScreen> {
     id: "1",
     firstName: "Herbi",
     profileImage:
-        "https://seeklogo.com/images/G/google-gemini-logo-A5787B2669-seeklogo.com.png",
+        "herbi.png",
   );
   @override
   Widget build(BuildContext context) {
@@ -39,20 +39,35 @@ class _HomePageState extends State<ChatBotScreen> {
   }
 
   Widget _buildUI() {
-    return DashChat(
-      inputOptions: InputOptions(trailing: [
-        IconButton(
-          onPressed: _sendMediaMessage,
-          icon: const Icon(
-            Icons.image,
+    return Stack(
+      children: [
+        // Background GIF with opacity
+        Opacity(
+          opacity: 0.15, // Set opacity for the GIF
+          child: SizedBox.expand(
+            child: Image.asset(
+              'assets/images/appbackgroundoptimize.gif', // Path to your GIF file
+              fit: BoxFit.cover, // Fill the screen
+            ),
           ),
-        )
-      ]),
-      currentUser: currentUser,
-      onSend: _sendMessage,
-      messages: messages,
+        ),
+
+        // Chat UI
+        DashChat(
+          inputOptions: InputOptions(trailing: [
+            IconButton(
+              onPressed: _sendMediaMessage,
+              icon: const Icon(Icons.image),
+            ),
+          ]),
+          currentUser: currentUser,
+          onSend: _sendMessage,
+          messages: messages,
+        ),
+      ],
     );
   }
+
 
   void _sendMessage(ChatMessage chatMessage) {
     setState(() {
