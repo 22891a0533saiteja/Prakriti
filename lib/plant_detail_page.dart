@@ -37,6 +37,10 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
     'Kannada': 'kn',
   };
 
+  List<QueryDocumentSnapshot>? treatments;
+  Map<String, bool> expandedState = {}; // Tracks expanded state for treatments
+  bool isLoadingTreatments = true;
+
   @override
   void initState() {
     super.initState();
@@ -70,33 +74,32 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
       print("Error fetching plant details: $e");
     }
   }
+
   Future<void> fetchTreatments() async {
-  try {
-    final snapshot = await _firestore
-        .collection('plantDetails')
-        .doc(widget.herbName)
-        .collection('treatments')
-        .get();
+    try {
+      final snapshot = await _firestore
+          .collection('plantDetails')
+          .doc(widget.herbName)
+          .collection('treatments')
+          .get();
 
-    setState(() {
-      treatments = snapshot.docs;
-      isLoadingTreatments = false;
-      for (var treatment in treatments!) {
-        expandedState[treatment.id] = false;
-      }
-    });
-  } catch (e) {
-    print('Error fetching treatments: $e');
-    setState(() {
-      isLoadingTreatments = false;
-    });
+      setState(() {
+        treatments = snapshot.docs;
+        isLoadingTreatments = false;
+        for (var treatment in treatments!) {
+          expandedState[treatment.id] = false;
+        }
+      });
+    } catch (e) {
+      print('Error fetching treatments: $e');
+      setState(() {
+        isLoadingTreatments = false;
+      });
+    }
   }
-}
-
 
   Future<String> translateText(String text, String targetLang) async {
     try {
-      // Replace 'trigger' with a unique placeholder before translation
       const placeholder = '\n';
       final preprocessedText = text.replaceAll('trigger', placeholder);
 
@@ -104,24 +107,17 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
         return preprocessedText.replaceAll(placeholder, 'trigger');
       }
 
-      // Translate the preprocessed text
-      final translated =
-          await translator.translate(preprocessedText, to: targetLang);
+      final translated = await translator.translate(preprocessedText, to: targetLang);
 
-      // Replace the placeholder back to 'trigger' after translation
       return translated.text.replaceAll(placeholder, 'trigger');
     } catch (e) {
       print("Translation error: $e");
-      return text; // Return original text in case of an error
+      return text; // Return original text if translation fails
     }
   }
-  List<QueryDocumentSnapshot>? treatments;
-  Map<String, bool> expandedState = {}; // Tracks expanded state for treatments
-  bool isLoadingTreatments = true;
 
-  Future<List<String>> translateList(
-      List<String> texts, String targetLang) async {
-    return Future.wait(texts.map((text) => translateText(text, targetLang)));
+  List<String> processText(String text) {
+    return text.split('trigger').map((line) => line.trim()).toList();
   }
 
   Future<void> translateData() async {
@@ -141,9 +137,8 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
         entry.key: entry.value is String
             ? await translateText(entry.value as String, selectedLanguage)
             : entry.value is List<String>
-                ? await translateList(
-                    entry.value as List<String>, selectedLanguage)
-                : entry.value,
+            ? await translateList(entry.value as List<String>, selectedLanguage)
+            : entry.value,
     };
 
     setState(() {
@@ -151,8 +146,8 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
     });
   }
 
-  List<String> processText(String text) {
-    return text.split('trigger').map((line) => line.trim()).toList();
+  Future<List<String>> translateList(List<String> texts, String targetLang) async {
+    return Future.wait(texts.map((text) => translateText(text, targetLang)));
   }
 
   @override
@@ -178,11 +173,11 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
 
     final images = List<String>.from(plantData!['images'] ?? []);
     final leafInfo =
-        processText(plantData!['leafInfo'] ?? 'No leaf information available');
+    processText(plantData!['leafInfo'] ?? 'No leaf information available');
     final rootInfo =
-        processText(plantData!['rootInfo'] ?? 'No root information available');
+    processText(plantData!['rootInfo'] ?? 'No root information available');
     final stemInfo =
-        processText(plantData!['stemInfo'] ?? 'No stem information available');
+    processText(plantData!['stemInfo'] ?? 'No stem information available');
     final advantages = processText(
         plantData!['advantages'] ?? 'No advantages information available');
     final disadvantages = processText(plantData!['disadvantages'] ??
@@ -192,410 +187,135 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
     final growCultivate = processText(
         plantData!['growCultivate'] ?? 'No cultivation information available');
     final medicinalVideos =
-        List<String>.from(plantData!['medicinalVideos'] ?? []);
-    final modelPath = plantData!['modelPath'];
-    final mtlPath = plantData!['mtlPath'];
-    final pngPath = plantData!['pngPath'];
+    List<String>.from(plantData!['medicinalVideos'] ?? []);
 
-
-
+    // Dropdown for language selection
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text(widget.herbName,
-            style: const TextStyle(color: Color(0xFFF39C12))),
+        backgroundColor: Colors.green.shade800,
+        title: Text(widget.herbName, style: const TextStyle(color: Color(0xFFF39C12) , fontWeight: FontWeight.bold)),
         actions: [
           DropdownButton<String>(
             value: selectedLanguage,
-            dropdownColor: Colors.black,
             icon: const Icon(Icons.language, color: Color(0xFFF39C12)),
-            onChanged: (String? newValue) async {
-              if (newValue != null) {
-                setState(() {
-                  selectedLanguage = newValue;
-                });
-                await translateData();
-              }
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedLanguage = newValue!;
+                isLoading = true;
+              });
+              translateData();
             },
-            items: languageMap.entries.map((entry) {
+            items: languageMap.keys.map<DropdownMenuItem<String>>((String lang) {
               return DropdownMenuItem<String>(
-                value: entry.value,
-                child: Text(
-                  entry.key,
-                  style: const TextStyle(color: Colors.white),
-                ),
+                value: languageMap[lang]!,
+                child: Text(lang, style: const TextStyle(color: Colors.white)),
               );
             }).toList(),
           ),
           IconButton(
             icon: const Icon(Icons.threed_rotation, color: Color(0xFFF39C12)),
             onPressed: () {
-              List<String> missingFiles = [];
-              if (modelPath == null) missingFiles.add('3D model (OBJ)');
-              if (mtlPath == null) missingFiles.add('Material file (MTL)');
-              if (pngPath == null) missingFiles.add('Texture file (PNG)');
-
-              if (missingFiles.isNotEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content:
-                          Text('Missing files: ${missingFiles.join(', ')}')),
-                );
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => Plant3DViewPage(
-                      modelPath: modelPath,
-                      mtlPath: mtlPath,
-                      pngPath: pngPath,
-                    ),
+              // Navigate to 3D view page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Plant3DViewPage(
+                    herbName: widget.herbName,
+                    modelPath: 'assets/${widget.herbName.toLowerCase()}/model.obj',
+                    mtlPath: 'assets/${widget.herbName.toLowerCase()}/model.mtl',
+                    pngPath: 'assets/${widget.herbName.toLowerCase()}/texture.png',
                   ),
-                );
-              }
+                ),
+              );
             },
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (images.isNotEmpty)
-                Column(
-                  children: [
-                    CarouselSlider.builder(
-                      itemCount: images.length,
-                      itemBuilder: (context, index, realIndex) {
-                        return CachedNetworkImage(
-                          imageUrl: images[index],
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                          errorWidget: (context, url, error) {
-                            return Container(
-                              color: Colors.grey,
-                              child: const Center(
-                                  child: Text('Image not available')),
-                            );
-                          },
-                        );
-                      },
-                      options: CarouselOptions(
-                        height: 200.0,
-                        autoPlay: true,
-                        enlargeCenterPage: true,
-                        enableInfiniteScroll: true,
-                      ),
-                    ),
-                    const SizedBox(height: 16.0),
-                  ],
-                )
-              else
-                Container(
-                  height: 200.0,
-                  color: Colors.grey,
-                  child: const Center(child: Text('No images available')),
-                ),
-              const SizedBox(height: 16.0),
-              _buildSection('Latin Name',
-                  plantData!['latinName'] ?? 'No Latin name available'),
-              const SizedBox(height: 16.0),
-              _buildSectionWithImage(
-                  'Leaves', leafInfo, images.isNotEmpty ? images[0] : null),
-              const SizedBox(height: 16.0),
-              _buildSectionWithImage(
-                  'Roots', rootInfo, images.length > 1 ? images[1] : null),
-              const SizedBox(height: 16.0),
-              _buildSectionWithImage(
-                  'Stem', stemInfo, images.length > 2 ? images[2] : null),
-              const SizedBox(height: 16.0),
-              _buildTextSection('Advantages', advantages),
-              const SizedBox(height: 16.0),
-              _buildTextSection('Disadvantages', disadvantages),
-              const SizedBox(height: 16.0),
-              _buildTextSection('Medicinal Uses', medicinalUses),
-              const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                'Treatments',
-                style: TextStyle(
-                  fontSize: 18.0,
-                  color: Color(0xFFF39C12),
-                  fontWeight: FontWeight.bold,
-                ),
+      body: ListView(
+        children: [
+          if (images.isNotEmpty)
+            CarouselSlider(
+              items: images.map((image) {
+                return GestureDetector(
+                  onTap: () {
+                    // Open image in full-screen viewer if needed
+                  },
+                  child: CachedNetworkImage(
+                    imageUrl: image,
+                    placeholder: (context, url) => const CircularProgressIndicator(),
+                    errorWidget: (context, url, error) {
+                      return const Center(child: Text('Image not available'));
+                    },
+                  ),
+                );
+              }).toList(),
+              options: CarouselOptions(
+                autoPlay: true,
+                height: 200.0,
+                enlargeCenterPage: true,
+                aspectRatio: 16 / 9,
+                viewportFraction: 0.8,
+                scrollPhysics: BouncingScrollPhysics(),
               ),
             ),
-            const SizedBox(height: 8.0),
-            if (isLoadingTreatments)
-              const Center(child: CircularProgressIndicator())
-            else if (treatments == null || treatments!.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    'No treatments available.',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: treatments!.length,
-                itemBuilder: (context, index) {
-                  final treatment = treatments![index];
-                  final treatmentName = treatment.id;
-                  final dosage = treatment['dosage'] ?? 'No dosage available';
-                  final daytouse = treatment['daytouse'] ?? 'No daytouse available';
-
-                  final precautions = treatment['precautions'] ?? 'No precautions available';
-                  final symptoms = treatment['symptons'] ?? 'No symptoms available';
-                  final isExpanded = expandedState[treatmentName] ?? false;
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              expandedState[treatmentName] = !isExpanded;
-                            });
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  treatmentName,
-                                  style: const TextStyle(
-                                    color: Color(0xFF99CEFF),
-                                    fontSize: 18.0,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Icon(
-                                  isExpanded
-                                      ? Icons.keyboard_arrow_up
-                                      : Icons.keyboard_arrow_down,
-                                  color: Colors.white,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        if (isExpanded) ...[
-                          const SizedBox(height: 8.0),
-                          Text('Dosage', style: const TextStyle(color: Color(
-                              0xFFFF7E7E))),
-                          Text('$dosage', style: const TextStyle(color: Colors.white)),
-                          Text('Precautions', style: const TextStyle(color: Color(
-                              0xFFFF7E7E))),
-                          Text('$precautions', style: const TextStyle(color: Colors.white)),
-                          Text('Symptoms', style: const TextStyle(color: Color(
-                              0xFFFF7E7E))),
-                          Text('$symptoms', style: const TextStyle(color: Colors.white)),
-                          Text('Number of Days to use:',
-                              style: const TextStyle(color: Color(
-                                  0xFFFF7E7E))),
-                          Text('$daytouse', style: const TextStyle(color: Colors.white)),
-                        ],
-                        const SizedBox(height: 8.0),
-                        Divider(
-                          color: Colors.white.withOpacity(0.6), // White color with 60% opacity
-                          thickness: 0.5, // Minimal thickness
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 16.0),
-              _buildTextSection('How to Grow / Cultivate', growCultivate),
-              const SizedBox(height: 16.0),
-              if (medicinalVideos.isNotEmpty)
-                _buildVideosSection(medicinalVideos),
-              const SizedBox(height: 16.0),
-              Center(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ChatBotScreen(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(
-                        255, 255, 234, 199), // Button color
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12.0,
-                      horizontal: 24.0,
-                    ),
-                  ),
-                  child: const Text(
-                    'For more information ask our Herbi Bot',
-                    style: TextStyle(
-                      fontSize: 16.0,
-                      color: Color.fromARGB(255, 0, 0, 0),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+          _buildSection('Leaf Information', leafInfo.join('\n')),
+          _buildSection('Root Information', rootInfo.join('\n')),
+          _buildSection('Stem Information', stemInfo.join('\n')),
+          _buildSection('Advantages', advantages.join('\n')),
+          _buildSection('Disadvantages', disadvantages.join('\n')),
+          _buildSection('Medicinal Uses', medicinalUses.join('\n')),
+          _buildSection('Grow & Cultivate', growCultivate.join('\n')),
+          _buildVideosSection(medicinalVideos),
+        ],
       ),
     );
   }
 
-  // Helper method for creating sections with a title and text
   Widget _buildSection(String label, String info) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 18.0,
-            color: Color(0xFFF39C12),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8.0),
-        Text(
-          info,
-          style: const TextStyle(
-            fontSize: 16.0,
-            color: Colors.white,
-          ),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 8),
+          Text(info, style: const TextStyle(fontSize: 14, color: Colors.white)),
+        ],
+      ),
     );
   }
 
-  // Helper method for creating sections with images and text
-  Widget _buildSectionWithImage(
-      String label, List<String> info, String? imageUrl) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (imageUrl != null)
-          CachedNetworkImage(
-            imageUrl: imageUrl,
-            fit: BoxFit.cover,
-            height: 150,
-            placeholder: (context, url) => const CircularProgressIndicator(),
-            errorWidget: (context, url, error) {
-              print('Failed to load image: $url');
-              return Container(
-                height: 150,
-                color: Colors.grey,
-                child: const Center(child: Text('Image not available')),
-              );
-            },
-          ),
-        const SizedBox(height: 8.0),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 18.0,
-            color: Color(0xFFF39C12),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8.0),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: info
-              .map(
-                (text) => Text(
-                  text,
-                  style: const TextStyle(fontSize: 16.0, color: Colors.white),
-                ),
-              )
-              .toList(),
-        ),
-      ],
+  Widget _buildVideosSection(List<String> medicinalVideos) {
+    if (medicinalVideos.isEmpty) {
+      return const SizedBox();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Medicinal Use Videos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 8),
+          for (var videoUrl in medicinalVideos) _buildVideoPlayer(videoUrl),
+        ],
+      ),
     );
   }
 
-  // Helper method for creating text-only sections
-  Widget _buildTextSection(String label, List<String> info) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 18.0,
-            color: Color(0xFFF39C12),
-            fontWeight: FontWeight.bold,
-          ),
+  Widget _buildVideoPlayer(String videoUrl) {
+    final youtubeId = YoutubePlayer.convertUrlToId(videoUrl);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: youtubeId == null
+          ? const Text('Invalid video URL')
+          : YoutubePlayer(
+        controller: YoutubePlayerController(
+          initialVideoId: youtubeId,
+          flags: const YoutubePlayerFlags(autoPlay: false, mute: false),
         ),
-        const SizedBox(height: 8.0),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: info
-              .map(
-                (text) => Text(
-                  text,
-                  style: const TextStyle(fontSize: 16.0, color: Colors.white),
-                ),
-              )
-              .toList(),
-        ),
-      ],
-    );
-  }
-
-  // Helper method for embedding videos
-  Widget _buildVideosSection(List<String> videoUrls) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Medicinal Videos',
-          style: TextStyle(
-            fontSize: 18.0,
-            color: Color(0xFFF39C12),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8.0),
-        Column(
-          children: videoUrls.map((videoUrl) {
-            final videoId = YoutubePlayer.convertUrlToId(videoUrl);
-            if (videoId == null) {
-              print("Invalid video URL: $videoUrl");
-              return const Text('Invalid video URL');
-            }
-            return YoutubePlayer(
-              controller: YoutubePlayerController(
-                initialVideoId: videoId,
-                flags: const YoutubePlayerFlags(
-                  autoPlay: false,
-                  mute: false,
-                ),
-              ),
-              showVideoProgressIndicator: true,
-            );
-          }).toList(),
-        ),
-      ],
+      ),
     );
   }
 }
