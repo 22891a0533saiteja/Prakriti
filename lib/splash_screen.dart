@@ -1,27 +1,52 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:prakriti/home_screen.dart';
-import 'main.dart';
-import 'LoginScreen.dart';
-import 'main_screen.dart';
-import 'home_screen.dart';
-import 'SignupScreen.dart';// Make sure this file exists
+import 'package:prakriti/main_screen.dart';
 
-class SplashScreen extends StatelessWidget {
+
+import 'LoginScreen.dart'; // Import LoginScreen
+
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkUserStatus();
+  }
+
+  // Check if user is logged in
+  _checkUserStatus() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // If the user is logged in, navigate to HomeScreen
+      Future.delayed(Duration(seconds: 2), () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => MainScreen()),
+        );
+      });
+    } else {
+      // If the user is not logged in, navigate to LoginScreen
+      Future.delayed(Duration(seconds: 2), () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LoginScreen()),
+        );
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Simulate a delay to show the splash screen for a few seconds
-    Future.delayed(Duration(seconds: 3), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => MainScreen()),//changed for signup
-      );
-    });
-
     return Scaffold(
-      backgroundColor: Colors.blueGrey[900],
+      backgroundColor: Colors.black,
       body: Center(
-        child: Text(
-          'Prakriti App',
-          style: TextStyle(fontSize: 24, color: Colors.white),
+        child: CircularProgressIndicator(
+          color: Color(0xFFF39C12),
         ),
       ),
     );
