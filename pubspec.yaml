@@ -55,6 +55,8 @@ dependencies:
   youtube_player_flutter: ^8.1.1
   flutter_staggered_animations: ^1.0.0
   translator: ^0.1.7
+  flutter_tts: ^3.6.09
+  speech_to_text: ^7.0.0
 
 
 dev_dependencies:
@@ -89,6 +91,10 @@ flutter:
     - fonts/Poppins-Bold.ttf
     - assets/user.png
     - assets/herbi.png
+    - assets/gif1.gif
+    - assets/gif2.gif
+    - assets/gif3.gif
+    - assets/gif4.gif
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

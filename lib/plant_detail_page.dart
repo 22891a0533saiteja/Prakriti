@@ -56,6 +56,7 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
           plantData = Map<String, dynamic>.from(originalPlantData!);
           isLoading = false;
         });
+        fetchTreatments();
       } else {
         setState(() {
           isLoading = false;
@@ -69,6 +70,29 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
       print("Error fetching plant details: $e");
     }
   }
+  Future<void> fetchTreatments() async {
+  try {
+    final snapshot = await _firestore
+        .collection('plantDetails')
+        .doc(widget.herbName)
+        .collection('treatments')
+        .get();
+
+    setState(() {
+      treatments = snapshot.docs;
+      isLoadingTreatments = false;
+      for (var treatment in treatments!) {
+        expandedState[treatment.id] = false;
+      }
+    });
+  } catch (e) {
+    print('Error fetching treatments: $e');
+    setState(() {
+      isLoadingTreatments = false;
+    });
+  }
+}
+
 
   Future<String> translateText(String text, String targetLang) async {
     try {
@@ -91,6 +115,9 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
       return text; // Return original text in case of an error
     }
   }
+  List<QueryDocumentSnapshot>? treatments;
+  Map<String, bool> expandedState = {}; // Tracks expanded state for treatments
+  bool isLoadingTreatments = true;
 
   Future<List<String>> translateList(
       List<String> texts, String targetLang) async {
@@ -169,6 +196,8 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
     final modelPath = plantData!['modelPath'];
     final mtlPath = plantData!['mtlPath'];
     final pngPath = plantData!['pngPath'];
+
+
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -290,6 +319,109 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
               _buildTextSection('Disadvantages', disadvantages),
               const SizedBox(height: 16.0),
               _buildTextSection('Medicinal Uses', medicinalUses),
+              const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'Treatments',
+                style: TextStyle(
+                  fontSize: 18.0,
+                  color: Color(0xFFF39C12),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8.0),
+            if (isLoadingTreatments)
+              const Center(child: CircularProgressIndicator())
+            else if (treatments == null || treatments!.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'No treatments available.',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: treatments!.length,
+                itemBuilder: (context, index) {
+                  final treatment = treatments![index];
+                  final treatmentName = treatment.id;
+                  final dosage = treatment['dosage'] ?? 'No dosage available';
+                  final daytouse = treatment['daytouse'] ?? 'No daytouse available';
+
+                  final precautions = treatment['precautions'] ?? 'No precautions available';
+                  final symptoms = treatment['symptons'] ?? 'No symptoms available';
+                  final isExpanded = expandedState[treatmentName] ?? false;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              expandedState[treatmentName] = !isExpanded;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  treatmentName,
+                                  style: const TextStyle(
+                                    color: Color(0xFF99CEFF),
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Icon(
+                                  isExpanded
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                  color: Colors.white,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (isExpanded) ...[
+                          const SizedBox(height: 8.0),
+                          Text('Dosage', style: const TextStyle(color: Color(
+                              0xFFFF7E7E))),
+                          Text('$dosage', style: const TextStyle(color: Colors.white)),
+                          Text('Precautions', style: const TextStyle(color: Color(
+                              0xFFFF7E7E))),
+                          Text('$precautions', style: const TextStyle(color: Colors.white)),
+                          Text('Symptoms', style: const TextStyle(color: Color(
+                              0xFFFF7E7E))),
+                          Text('$symptoms', style: const TextStyle(color: Colors.white)),
+                          Text('Number of Days to use:',
+                              style: const TextStyle(color: Color(
+                                  0xFFFF7E7E))),
+                          Text('$daytouse', style: const TextStyle(color: Colors.white)),
+                        ],
+                        const SizedBox(height: 8.0),
+                        Divider(
+                          color: Colors.white.withOpacity(0.6), // White color with 60% opacity
+                          thickness: 0.5, // Minimal thickness
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
               const SizedBox(height: 16.0),
               _buildTextSection('How to Grow / Cultivate', growCultivate),
               const SizedBox(height: 16.0),

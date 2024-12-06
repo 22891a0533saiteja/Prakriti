@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'chatbot_home.dart';
@@ -28,17 +30,36 @@ class _SearchPageState extends State<SearchPage>
     });
 
     try {
-      final snapshot = await _firestore.collection('plantDetails').get();
+      final snapshotPlantDetails =
+          await _firestore.collection('plantDetails').get();
+      final snapshotHealthcare =
+          await _firestore.collection('healthcare').get();
+
       setState(() {
-        _allPlants = snapshot.docs.map((doc) {
-          final advantages = doc.data()['advantages'] as String? ?? '';
+        // Fetch data from 'plantDetails'
+        final plantDetails = snapshotPlantDetails.docs.map((doc) {
+          final advantages = doc.data()['advantages'] as String? ?? '';   
           final disadvantages = doc.data()['disadvantages'] as String? ?? '';
           return {
             'name': doc.id,
-            'details': advantages + ' ' + disadvantages,
+            'details':
+                '$advantages $disadvantages', // Combine advantages and disadvantages
           };
         }).toList();
-        _searchResults = _allPlants;
+
+        // Fetch data from 'healthcare'
+        final healthcareDetails = snapshotHealthcare.docs.map((doc) {
+          final List<dynamic> treat =
+              doc.data()['treat'] as List<dynamic>? ?? [];
+          return {
+            'name': doc.id,
+            'details': treat.join(', '), // Join the list into a single string
+          };
+        }).toList();
+
+        // Combine both collections
+        _allPlants = [...plantDetails, ...healthcareDetails];
+        _searchResults = _allPlants; // Initialize search results
         _isRetrieving = false;
       });
     } catch (e) {
@@ -87,7 +108,7 @@ class _SearchPageState extends State<SearchPage>
             child: TextField(
               onChanged: _searchPlants,
               decoration: InputDecoration(
-                hintText: 'Search for a plant...',
+                hintText: 'Search for a plant or disease...',
                 hintStyle:
                     TextStyle(color: const Color.fromARGB(255, 255, 207, 134)),
                 border: OutlineInputBorder(),
