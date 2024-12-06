@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:prakriti/SignupScreen.dart';
@@ -7,6 +8,7 @@ import 'privacy.dart';
 import 'help_support.dart';
 import 'settings.dart';
 import 'home_screen.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -16,11 +18,10 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<ProfilePage> {
-  final User? currentUser = FirebaseAuth.instance.currentUser; // Get current user
-
+  final User? currentUser =
+      FirebaseAuth.instance.currentUser; // Get current user
 
   @override
-
   Widget build(BuildContext context) {
     // Ensure the user is logged in
     if (currentUser == null) {
@@ -115,7 +116,7 @@ class _HomePageState extends State<ProfilePage> {
                         context,
                         Icons.history,
                         'Search History',
-                            () => Navigator.push(
+                        () => Navigator.push(
                           context,
                           MaterialPageRoute(
                               builder: (context) => SearchHistoryPage()),
@@ -125,7 +126,7 @@ class _HomePageState extends State<ProfilePage> {
                         context,
                         Icons.lock,
                         'Privacy',
-                            () => Navigator.push(
+                        () => Navigator.push(
                           context,
                           MaterialPageRoute(
                               builder: (context) => PrivacyPage()),
@@ -135,7 +136,7 @@ class _HomePageState extends State<ProfilePage> {
                         context,
                         Icons.help,
                         'Help & Support',
-                            () => Navigator.push(
+                        () => Navigator.push(
                           context,
                           MaterialPageRoute(
                               builder: (context) => HelpSupportPage()),
@@ -145,7 +146,7 @@ class _HomePageState extends State<ProfilePage> {
                         context,
                         Icons.settings,
                         'Settings',
-                            () => Navigator.push(
+                        () => Navigator.push(
                           context,
                           MaterialPageRoute(
                               builder: (context) => SettingsPage()),
@@ -160,7 +161,7 @@ class _HomePageState extends State<ProfilePage> {
                               context,
                               MaterialPageRoute(
                                   builder: (context) => SignupScreen()),
-                                  (route) => false,
+                              (route) => false,
                             );
                           },
                           child: Text(
